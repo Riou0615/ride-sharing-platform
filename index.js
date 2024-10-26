@@ -220,6 +220,10 @@ app.get('/get-messages', (req, res) => {
     res.json({ messages: chatRooms[requestId] });
 });
 
+app.get('/', (req, res) => {
+    res.send('Welcome to the Ride-Sharing Platform!');
+});
+
 
 app.listen(3000, () => {
     console.log('Server running on http://localhost:3000');
