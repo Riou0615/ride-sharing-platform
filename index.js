@@ -224,6 +224,13 @@ app.get('/', (req, res) => {
     res.send('Welcome to the Ride-Sharing Platform!');
 });
 
+const path = require('path');
+
+// ホームページにindex.htmlを提供
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
+
 
 app.listen(3000, () => {
     console.log('Server running on http://localhost:3000');
