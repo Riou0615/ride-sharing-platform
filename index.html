@@ -14,6 +14,11 @@
     <input type="email" id="register-email" placeholder="Email" required />
     <input type="password" id="register-password" placeholder="Password" required />
     <input type="text" id="register-studentId" placeholder="Student ID" required />
+    <select id="register-userType" required>
+      <option value="">Select Role</option>
+      <option value="driver">Driver</option>
+      <option value="passenger">Passenger</option>
+    </select>
     <button type="submit">Register</button>
   </form>
 
@@ -31,6 +36,38 @@
   <!-- エラーメッセージ表示エリア -->
   <p id="error-message" style="color: red;"></p>
 
+  <!-- ホーム画面 -->
+  <div id="home-screen" style="display: none;">
+    <h2>Home</h2>
+
+    <!-- プロフィール編集欄 -->
+    <h3>Edit Profile</h3>
+    <form id="edit-profile-form">
+      <input type="text" id="edit-name" placeholder="Name" />
+      <input type="email" id="edit-email" placeholder="Email" />
+      <input type="text" id="edit-studentId" placeholder="Student ID" />
+      <button type="submit">Save Changes</button>
+    </form>
+    <p id="edit-profile-message" style="color: green;"></p>
+
+    <!-- 募集作成欄（運転者限定） -->
+    <h3>Create Ride Request (Driver Only)</h3>
+    <form id="create-ride-form">
+      <input type="text" id="ride-departure" placeholder="Departure" required />
+      <input type="text" id="ride-destination" placeholder="Destination" required />
+      <input type="datetime-local" id="ride-dateTime" required />
+      <input type="number" id="ride-seats" placeholder="Available Seats" required min="1" />
+      <button type="submit">Create Ride</button>
+    </form>
+    <p id="create-ride-message" style="color: green;"></p>
+
+    <!-- 募集閲覧欄 -->
+    <h3>Available Rides</h3>
+    <div id="ride-list">
+      <!-- 募集が一覧表示されるエリア -->
+    </div>
+  </div>
+
   <script>
     // 登録処理
     document.getElementById("register-form").addEventListener("submit", async (e) => {
@@ -39,21 +76,21 @@
       const email = document.getElementById("register-email").value;
       const password = document.getElementById("register-password").value;
       const studentId = document.getElementById("register-studentId").value;
+      const userType = document.getElementById("register-userType").value;
 
       const response = await fetch("/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password, studentId }),
+        body: JSON.stringify({ name, email, password, student_id: studentId, userType }),
       });
 
       const registerMessage = document.getElementById("register-message");
-      registerMessage.style.color = "green"; // 成功メッセージの色を設定
       if (response.ok) {
         registerMessage.textContent = "Registration successful! Please check your email to verify your account.";
       } else {
         const result = await response.json();
         registerMessage.textContent = result.message || "Registration failed.";
-        registerMessage.style.color = "red"; // エラーメッセージを赤色に設定
+        registerMessage.style.color = "red";
       }
     });
 
@@ -64,7 +101,7 @@
       const password = document.getElementById("login-password").value;
 
       const errorMessage = document.getElementById("error-message");
-      errorMessage.textContent = ""; // エラーメッセージのリセット
+      errorMessage.textContent = "";
 
       const response = await fetch("/login", {
         method: "POST",
@@ -75,12 +112,73 @@
 
       if (result.token) {
         alert("Login successful!");
-        window.location.href = "/home"; // ログイン成功時にリダイレクト
+        document.getElementById("home-screen").style.display = "block"; // ホーム画面を表示
       } else {
         errorMessage.textContent = result.message || "Login failed. Please check your credentials.";
       }
     });
+
+    // プロフィール編集処理
+    document.getElementById("edit-profile-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const name = document.getElementById("edit-name").value;
+      const email = document.getElementById("edit-email").value;
+      const studentId = document.getElementById("edit-studentId").value;
+
+      const response = await fetch("/edit-profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, studentId }),
+      });
+
+      const editProfileMessage = document.getElementById("edit-profile-message");
+      if (response.ok) {
+        editProfileMessage.textContent = "Profile updated successfully!";
+      } else {
+        editProfileMessage.textContent = "Failed to update profile.";
+      }
+    });
+
+    // ライド募集作成処理
+    document.getElementById("create-ride-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const departure = document.getElementById("ride-departure").value;
+      const destination = document.getElementById("ride-destination").value;
+      const dateTime = document.getElementById("ride-dateTime").value;
+      const seatsAvailable = document.getElementById("ride-seats").value;
+
+      const response = await fetch("/create-ride-request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ departure, destination, dateTime, seatsAvailable }),
+      });
+
+      const createRideMessage = document.getElementById("create-ride-message");
+      if (response.ok) {
+        createRideMessage.textContent = "Ride request created successfully!";
+      } else {
+        createRideMessage.textContent = "Failed to create ride request.";
+      }
+    });
+
+    // 募集閲覧処理
+    async function loadAvailableRides() {
+      const response = await fetch("/search-rides");
+      const rides = await response.json();
+      const rideList = document.getElementById("ride-list");
+      rideList.innerHTML = "";
+
+      rides.forEach((ride) => {
+        const rideItem = document.createElement("div");
+        rideItem.textContent = `From ${ride.departure} to ${ride.destination} at ${ride.dateTime}, Seats: ${ride.seatsAvailable}`;
+        rideList.appendChild(rideItem);
+      });
+    }
+
+    // ページ読み込み時に募集をロード
+    window.onload = loadAvailableRides;
   </script>
 </body>
 </html>
+
 

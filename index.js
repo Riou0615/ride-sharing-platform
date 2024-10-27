@@ -28,13 +28,9 @@ const transporter = nodemailer.createTransport({
 app.post('/register', async (req, res) => {
     const { name, email, password, student_id, age, bio, userType, vehicleInfo } = req.body;
 
-    // パスワードを暗号化
     const hashedPassword = await bcrypt.hash(password, 10);
-
-    // 認証トークンを生成
     const token = crypto.randomBytes(32).toString('hex');
 
-    // ユーザー情報を保存
     users[email] = {
         name,
         email,
@@ -48,7 +44,6 @@ app.post('/register', async (req, res) => {
         verified: false
     };
 
-    // 認証メールを送信
     const mailOptions = {
         from: 'riou0615@gmail.com',
         to: email,
@@ -69,7 +64,6 @@ app.post('/register', async (req, res) => {
 app.get('/confirm/:token', (req, res) => {
     const { token } = req.params;
 
-    // トークンを使ってユーザーを検索し、検証フラグをtrueにする
     for (let email in users) {
         if (users[email].token === token) {
             users[email].verified = true;
@@ -111,8 +105,50 @@ const authenticateToken = (req, res, next) => {
     });
 };
 
+// プロフィール編集エンドポイント
+app.post('/edit-profile', authenticateToken, (req, res) => {
+    const { name, email, student_id } = req.body;
+    const user = users[req.user.email];
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    user.name = name || user.name;
+    user.email = email || user.email;
+    user.student_id = student_id || user.student_id;
+    res.status(200).json({ message: 'Profile updated successfully' });
+});
+
+// ライド募集作成エンドポイント（運転者のみ）
+app.post('/create-ride-request', authenticateToken, (req, res) => {
+    const { departure, destination, dateTime, seatsAvailable } = req.body;
+    const user = users[req.user.email];
+
+    if (user.userType !== 'driver') {
+        return res.status(403).json({ message: 'Only drivers can create ride requests' });
+    }
+
+    const requestId = crypto.randomBytes(16).toString('hex');
+    rideRequests[requestId] = {
+        userId: req.user.email,
+        departure,
+        destination,
+        dateTime,
+        seatsAvailable
+    };
+
+    res.status(200).json({ message: 'Ride request created successfully', requestId });
+});
+
+// ライド募集閲覧エンドポイント
+app.get('/search-rides', (req, res) => {
+    const availableRides = Object.entries(rideRequests).map(([requestId, ride]) => ({
+        requestId,
+        ...ride
+    }));
+    res.json(availableRides);
+});
+
 // ホーム画面のエンドポイント
-app.get('/home', (req, res) => {
+app.get('/home', authenticateToken, (req, res) => {
     res.send("Welcome to your homepage!");
 });
 
