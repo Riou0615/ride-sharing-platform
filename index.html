@@ -64,3 +64,47 @@
   </script>
 </body>
 </html>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Ride Sharing Platform</title>
+</head>
+<body>
+  <h1>Welcome to the Ride-Sharing Platform!</h1>
+
+  <!-- ログインフォーム -->
+  <h2>Login</h2>
+  <form id="login-form">
+    <input type="email" id="login-email" placeholder="Email" required />
+    <input type="password" id="login-password" placeholder="Password" required />
+    <button type="submit">Login</button>
+  </form>
+
+  <script>
+    // ログイン処理
+    document.getElementById("login-form").addEventListener("submit", async (e) => {
+      e.preventDefault(); // フォームのデフォルト送信を防ぐ
+      const email = document.getElementById("login-email").value;
+      const password = document.getElementById("login-password").value;
+
+      // サーバーにログインリクエストを送信
+      const response = await fetch("/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const result = await response.json();
+      if (result.token) {
+        alert("Login successful!");
+        // ログイン成功時にホーム画面にリダイレクト
+        window.location.href = "/home";
+      } else {
+        alert(result.message || "Login failed.");
+      }
+    });
+  </script>
+</body>
+</html>

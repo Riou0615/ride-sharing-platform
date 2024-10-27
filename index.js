@@ -229,6 +229,11 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
+// ホーム画面のエンドポイント
+app.get('/home', (req, res) => {
+    res.send("Welcome to your homepage!");
+  });
+  
 
 app.listen(3000, () => {
     console.log('Server running on http://localhost:3000');
