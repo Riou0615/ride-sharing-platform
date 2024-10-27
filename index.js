@@ -138,11 +138,12 @@ app.post('/register', async (req, res) => {
 
     // 認証メールを送信
     const mailOptions = {
-        from: 'your-verified-email@example.com',
+        from: 'riou0615@gmail.com',
         to: email,
         subject: 'Confirm your email',
-        text: `Hello ${name}, please confirm your email by clicking on the following link: http://localhost:3000/confirm/${token}`
+        text: `Hello ${name}, please confirm your email by clicking on the following link: https://ride-sharing-platform.onrender.com/confirm/${token}`
     };
+    
 
     transporter.sendMail(mailOptions, (error, info) => {
         if (error) {
