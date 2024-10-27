@@ -17,6 +17,9 @@
     <button type="submit">Register</button>
   </form>
 
+  <!-- 登録成功メッセージ表示エリア -->
+  <p id="register-message" style="color: green;"></p>
+
   <!-- ログインフォーム -->
   <h2>Login</h2>
   <form id="login-form">
@@ -24,6 +27,9 @@
     <input type="password" id="login-password" placeholder="Password" required />
     <button type="submit">Login</button>
   </form>
+
+  <!-- エラーメッセージ表示エリア -->
+  <p id="error-message" style="color: red;"></p>
 
   <script>
     // 登録処理
@@ -40,7 +46,14 @@
         body: JSON.stringify({ name, email, password, studentId }),
       });
       const result = await response.json();
-      alert(result.message || "Registration successful!");
+
+      const registerMessage = document.getElementById("register-message");
+      if (response.ok) {
+        registerMessage.textContent = "Registration successful! Please check your email to verify your account.";
+      } else {
+        registerMessage.textContent = result.message || "Registration failed.";
+        registerMessage.style.color = "red"; // エラーの場合、赤色で表示
+      }
     });
 
     // ログイン処理
@@ -49,20 +62,24 @@
       const email = document.getElementById("login-email").value;
       const password = document.getElementById("login-password").value;
 
+      const errorMessage = document.getElementById("error-message");
+      errorMessage.textContent = ""; // エラーメッセージのリセット
+
       const response = await fetch("/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
       const result = await response.json();
+
       if (result.token) {
         alert("Login successful!");
-        // ログイン成功時にホーム画面にリダイレクト
-        window.location.href = "/home";
+        window.location.href = "/home"; // ログイン成功時にリダイレクト
       } else {
-        alert(result.message || "Login failed.");
+        errorMessage.textContent = result.message || "Login failed. Please check your credentials.";
       }
     });
   </script>
 </body>
 </html>
+
