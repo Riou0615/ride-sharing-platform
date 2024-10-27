@@ -41,8 +41,9 @@ app.post('/register', async (req, res) => {
         from: 'riou0615@gmail.com',
         to: email,
         subject: 'Confirm your email',
-        text: `Hello ${name}, please confirm your email by copying and pasting this link into your browser: http://localhost:3000/confirm/${token}`
+        text: `Hello ${name}, please confirm your email by clicking on the following link: https://ride-sharing-platform.onrender.com/confirm/${token}`
     };
+    
 
     transporter.sendMail(mailOptions, (error, info) => {
         if (error) {
