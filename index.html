@@ -45,14 +45,15 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, email, password, studentId }),
       });
-      const result = await response.json();
 
       const registerMessage = document.getElementById("register-message");
+      registerMessage.style.color = "green"; // 成功メッセージの色を設定
       if (response.ok) {
         registerMessage.textContent = "Registration successful! Please check your email to verify your account.";
       } else {
+        const result = await response.json();
         registerMessage.textContent = result.message || "Registration failed.";
-        registerMessage.style.color = "red"; // エラーの場合、赤色で表示
+        registerMessage.style.color = "red"; // エラーメッセージを赤色に設定
       }
     });
 
