@@ -112,6 +112,7 @@
 
       if (result.token) {
         alert("Login successful!");
+        localStorage.setItem("token", result.token); // トークンをローカルに保存
         document.getElementById("home-screen").style.display = "block"; // ホーム画面を表示
       } else {
         errorMessage.textContent = result.message || "Login failed. Please check your credentials.";
@@ -125,9 +126,13 @@
       const email = document.getElementById("edit-email").value;
       const studentId = document.getElementById("edit-studentId").value;
 
+      const token = localStorage.getItem("token");
       const response = await fetch("/edit-profile", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
         body: JSON.stringify({ name, email, studentId }),
       });
 
@@ -147,9 +152,13 @@
       const dateTime = document.getElementById("ride-dateTime").value;
       const seatsAvailable = document.getElementById("ride-seats").value;
 
+      const token = localStorage.getItem("token"); // ローカルに保存したトークンを取得
       const response = await fetch("/create-ride-request", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`, // トークンを追加
+        },
         body: JSON.stringify({ departure, destination, dateTime, seatsAvailable }),
       });
 
@@ -180,5 +189,4 @@
   </script>
 </body>
 </html>
-
 
