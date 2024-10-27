@@ -220,10 +220,6 @@ app.get('/get-messages', (req, res) => {
     res.json({ messages: chatRooms[requestId] });
 });
 
-app.get('/', (req, res) => {
-    res.send('Welcome to the Ride-Sharing Platform!');
-});
-
 const path = require('path');
 
 // ホームページにindex.htmlを提供
