@@ -1,36 +1,36 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>Ride Sharing Platform</title>
+  <title>ライドシェアプラットフォーム</title>
 </head>
 <body>
-  <h1>Welcome to the Ride-Sharing Platform!</h1>
+  <h1>ライドシェアプラットフォームへようこそ！</h1>
 
   <!-- ユーザー登録フォーム -->
-  <h2>Register</h2>
+  <h2>新規登録</h2>
   <form id="register-form">
-    <input type="text" id="register-name" placeholder="Name" required />
-    <input type="email" id="register-email" placeholder="Email" required />
-    <input type="password" id="register-password" placeholder="Password" required />
-    <input type="text" id="register-studentId" placeholder="Student ID" required />
+    <input type="text" id="register-name" placeholder="名前" required />
+    <input type="email" id="register-email" placeholder="メールアドレス" required />
+    <input type="password" id="register-password" placeholder="パスワード" required />
+    <input type="text" id="register-studentId" placeholder="学籍番号" required />
     <select id="register-userType" required>
-      <option value="">Select Role</option>
-      <option value="driver">Driver</option>
-      <option value="passenger">Passenger</option>
+      <option value="">役割を選択してください</option>
+      <option value="driver">運転者</option>
+      <option value="passenger">同乗者</option>
     </select>
-    <button type="submit">Register</button>
+    <button type="submit">登録</button>
   </form>
 
   <!-- 登録成功メッセージ表示エリア -->
   <p id="register-message" style="color: green;"></p>
 
   <!-- ログインフォーム -->
-  <h2>Login</h2>
+  <h2>ログイン</h2>
   <form id="login-form">
-    <input type="email" id="login-email" placeholder="Email" required />
-    <input type="password" id="login-password" placeholder="Password" required />
-    <button type="submit">Login</button>
+    <input type="email" id="login-email" placeholder="メールアドレス" required />
+    <input type="password" id="login-password" placeholder="パスワード" required />
+    <button type="submit">ログイン</button>
   </form>
 
   <!-- エラーメッセージ表示エリア -->
@@ -38,31 +38,31 @@
 
   <!-- ホーム画面 -->
   <div id="home-screen" style="display: none;">
-    <h2>Home</h2>
+    <h2>ホーム</h2>
 
     <!-- プロフィール編集欄 -->
-    <h3>Edit Profile</h3>
+    <h3>プロフィール編集</h3>
     <form id="edit-profile-form">
-      <input type="text" id="edit-name" placeholder="Name" />
-      <input type="email" id="edit-email" placeholder="Email" />
-      <input type="text" id="edit-studentId" placeholder="Student ID" />
-      <button type="submit">Save Changes</button>
+      <input type="text" id="edit-name" placeholder="名前" />
+      <input type="email" id="edit-email" placeholder="メールアドレス" />
+      <input type="text" id="edit-studentId" placeholder="学籍番号" />
+      <button type="submit">変更を保存</button>
     </form>
     <p id="edit-profile-message" style="color: green;"></p>
 
     <!-- 募集作成欄（運転者限定） -->
-    <h3>Create Ride Request (Driver Only)</h3>
+    <h3>ライド募集作成（運転者のみ）</h3>
     <form id="create-ride-form">
-      <input type="text" id="ride-departure" placeholder="Departure" required />
-      <input type="text" id="ride-destination" placeholder="Destination" required />
+      <input type="text" id="ride-departure" placeholder="出発地" required />
+      <input type="text" id="ride-destination" placeholder="目的地" required />
       <input type="datetime-local" id="ride-dateTime" required />
-      <input type="number" id="ride-seats" placeholder="Available Seats" required min="1" />
-      <button type="submit">Create Ride</button>
+      <input type="number" id="ride-seats" placeholder="空席数" required min="1" />
+      <button type="submit">募集を作成</button>
     </form>
     <p id="create-ride-message" style="color: green;"></p>
 
     <!-- 募集閲覧欄 -->
-    <h3>Available Rides</h3>
+    <h3>利用可能なライド</h3>
     <div id="ride-list">
       <!-- 募集が一覧表示されるエリア -->
     </div>
@@ -86,10 +86,10 @@
 
       const registerMessage = document.getElementById("register-message");
       if (response.ok) {
-        registerMessage.textContent = "Registration successful! Please check your email to verify your account.";
+        registerMessage.textContent = "登録が完了しました！確認のためメールをご確認ください。";
       } else {
         const result = await response.json();
-        registerMessage.textContent = result.message || "Registration failed.";
+        registerMessage.textContent = result.message || "登録に失敗しました。";
         registerMessage.style.color = "red";
       }
     });
@@ -111,11 +111,11 @@
       const result = await response.json();
 
       if (result.token) {
-        alert("Login successful!");
+        alert("ログインに成功しました！");
         localStorage.setItem("token", result.token); // トークンをローカルに保存
         document.getElementById("home-screen").style.display = "block"; // ホーム画面を表示
       } else {
-        errorMessage.textContent = result.message || "Login failed. Please check your credentials.";
+        errorMessage.textContent = result.message || "ログインに失敗しました。";
       }
     });
 
@@ -138,9 +138,9 @@
 
       const editProfileMessage = document.getElementById("edit-profile-message");
       if (response.ok) {
-        editProfileMessage.textContent = "Profile updated successfully!";
+        editProfileMessage.textContent = "プロフィールが正常に更新されました！";
       } else {
-        editProfileMessage.textContent = "Failed to update profile.";
+        editProfileMessage.textContent = "プロフィールの更新に失敗しました。";
       }
     });
 
@@ -152,21 +152,21 @@
       const dateTime = document.getElementById("ride-dateTime").value;
       const seatsAvailable = document.getElementById("ride-seats").value;
 
-      const token = localStorage.getItem("token"); // ローカルに保存したトークンを取得
+      const token = localStorage.getItem("token");
       const response = await fetch("/create-ride-request", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`, // トークンを追加
+          "Authorization": `Bearer ${token}`,
         },
         body: JSON.stringify({ departure, destination, dateTime, seatsAvailable }),
       });
 
       const createRideMessage = document.getElementById("create-ride-message");
       if (response.ok) {
-        createRideMessage.textContent = "Ride request created successfully!";
+        createRideMessage.textContent = "ライド募集が作成されました！";
       } else {
-        createRideMessage.textContent = "Failed to create ride request.";
+        createRideMessage.textContent = "ライド募集の作成に失敗しました。";
       }
     });
 
@@ -179,7 +179,7 @@
 
       rides.forEach((ride) => {
         const rideItem = document.createElement("div");
-        rideItem.textContent = `From ${ride.departure} to ${ride.destination} at ${ride.dateTime}, Seats: ${ride.seatsAvailable}`;
+        rideItem.textContent = `出発地: ${ride.departure}, 目的地: ${ride.destination}, 日時: ${ride.dateTime}, 空席数: ${ride.seatsAvailable}`;
         rideList.appendChild(rideItem);
       });
     }
@@ -189,4 +189,3 @@
   </script>
 </body>
 </html>
-
