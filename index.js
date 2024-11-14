@@ -26,24 +26,26 @@ const transporter = nodemailer.createTransport({
 
 // ユーザー登録エンドポイント
 app.post('/register', async (req, res) => {
-    const { name, email, password, student_id, age, bio, userType, vehicleInfo } = req.body;
+    const { name, email, password, student_id, userType } = req.body;
 
+    // パスワードを暗号化
     const hashedPassword = await bcrypt.hash(password, 10);
+
+    // 認証トークンを生成
     const token = crypto.randomBytes(32).toString('hex');
 
+    // ユーザー情報を保存
     users[email] = {
         name,
         email,
         hashedPassword,
         student_id,
-        age,
-        bio,
         userType,
-        vehicleInfo: userType === 'driver' ? vehicleInfo : null,
         token,
         verified: false
     };
 
+    // 認証メールを送信
     const mailOptions = {
         from: 'riou0615@gmail.com',
         to: email,
@@ -56,7 +58,7 @@ app.post('/register', async (req, res) => {
             console.error('Error sending email:', error);
             return res.status(500).json({ message: `Error sending email: ${error.message}` });
         }
-        res.status(200).json({ message: 'Registration successful! Please check your email to verify your account.' });
+        res.status(200).json({ message: '登録に成功しました！メールを確認してください。' });
     });
 });
 
@@ -64,13 +66,14 @@ app.post('/register', async (req, res) => {
 app.get('/confirm/:token', (req, res) => {
     const { token } = req.params;
 
+    // トークンを使ってユーザーを検索し、検証フラグをtrueにする
     for (let email in users) {
         if (users[email].token === token) {
             users[email].verified = true;
-            return res.send('Email verified! You can now log in.');
+            return res.send('メール認証が完了しました！ログインできます。');
         }
     }
-    res.status(400).send('Invalid token');
+    res.status(400).send('無効なトークンです');
 });
 
 // ログインエンドポイント
@@ -79,15 +82,15 @@ app.post('/login', (req, res) => {
 
     const user = users[email];
     if (!user) {
-        return res.status(400).json({ message: 'User not found' });
+        return res.status(400).json({ message: 'ユーザーが見つかりません' });
     }
 
     bcrypt.compare(password, user.hashedPassword, (err, isMatch) => {
-        if (err) return res.status(500).json({ message: 'Server error' });
-        if (!isMatch) return res.status(400).json({ message: 'Invalid password' });
+        if (err) return res.status(500).json({ message: 'サーバーエラー' });
+        if (!isMatch) return res.status(400).json({ message: 'パスワードが正しくありません' });
 
         const token = jwt.sign({ email: user.email }, process.env.JWT_SECRET, { expiresIn: '1h' });
-        res.json({ message: 'Login successful', token });
+        res.json({ message: 'ログインに成功しました', token });
     });
 });
 
@@ -105,58 +108,63 @@ const authenticateToken = (req, res, next) => {
     });
 };
 
-// プロフィール編集エンドポイント
-app.post('/edit-profile', authenticateToken, (req, res) => {
-    const { name, email, student_id } = req.body;
-    const user = users[req.user.email];
-    if (!user) return res.status(404).json({ message: 'User not found' });
-
-    user.name = name || user.name;
-    user.email = email || user.email;
-    user.student_id = student_id || user.student_id;
-    res.status(200).json({ message: 'Profile updated successfully' });
+// ホーム画面のエンドポイント
+app.get('/home', authenticateToken, (req, res) => {
+    res.send("ホーム画面へようこそ！");
 });
 
-// ライド募集作成エンドポイント（運転者のみ）
-app.post('/create-ride-request', authenticateToken, (req, res) => {
-    const { departure, destination, dateTime, seatsAvailable } = req.body;
-    const user = users[req.user.email];
+// プロフィール編集エンドポイント
+app.post('/edit-profile', authenticateToken, (req, res) => {
+    const { name, email, studentId } = req.body;
 
-    if (user.userType !== 'driver') {
-        return res.status(403).json({ message: 'Only drivers can create ride requests' });
+    // ユーザーが存在するか確認
+    const user = users[req.user.email];
+    if (!user) {
+        return res.status(400).json({ message: 'ユーザーが見つかりません' });
     }
 
-    const requestId = crypto.randomBytes(16).toString('hex');
+    // ユーザー情報の更新
+    if (name) user.name = name;
+    if (email) user.email = email;
+    if (studentId) user.student_id = studentId;
+
+    res.json({ message: 'プロフィールが更新されました！' });
+});
+
+// ライド募集作成エンドポイント
+app.post('/create-ride-request', authenticateToken, (req, res) => {
+    const { departure, destination, dateTime, seatsAvailable } = req.body;
+
+    const user = users[req.user.email];
+    if (user.userType !== 'driver') {
+        return res.status(400).json({ message: '運転者のみライドの募集を作成できます' });
+    }
+
+    // ライドリクエスト情報を保存
+    const requestId = crypto.randomBytes(16).toString('hex'); // リクエストIDを生成
     rideRequests[requestId] = {
-        userId: req.user.email,
+        userId: user.email,
         departure,
         destination,
         dateTime,
         seatsAvailable
     };
 
-    res.status(200).json({ message: 'Ride request created successfully', requestId });
+    res.status(200).json({ message: 'ライドの募集が作成されました！', requestId });
 });
 
-// ライド募集閲覧エンドポイント
+// 募集閲覧エンドポイント
 app.get('/search-rides', (req, res) => {
-    const availableRides = Object.entries(rideRequests).map(([requestId, ride]) => ({
-        requestId,
-        ...ride
-    }));
-    res.json(availableRides);
-});
-
-// ホーム画面のエンドポイント
-app.get('/home', authenticateToken, (req, res) => {
-    res.send("Welcome to your homepage!");
+    const rides = Object.values(rideRequests);
+    res.json(rides);
 });
 
 // ホームページにindex.htmlを提供
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
+    res.sendFile(path.join(__dirname, 'index.html'));
 });
 
+// サーバーの起動
 app.listen(3000, () => {
     console.log('Server running on http://localhost:3000');
 });

@@ -8,21 +8,19 @@
   <h1>ライドシェアプラットフォームへようこそ！</h1>
 
   <!-- ユーザー登録フォーム -->
-  <h2>新規登録</h2>
+  <h2>登録</h2>
   <form id="register-form">
     <input type="text" id="register-name" placeholder="名前" required />
     <input type="email" id="register-email" placeholder="メールアドレス" required />
     <input type="password" id="register-password" placeholder="パスワード" required />
-    <input type="text" id="register-studentId" placeholder="学籍番号" required />
+    <input type="text" id="register-studentId" placeholder="学生ID" required />
     <select id="register-userType" required>
-      <option value="">役割を選択してください</option>
+      <option value="">役割を選択</option>
       <option value="driver">運転者</option>
       <option value="passenger">同乗者</option>
     </select>
     <button type="submit">登録</button>
   </form>
-
-  <!-- 登録成功メッセージ表示エリア -->
   <p id="register-message" style="color: green;"></p>
 
   <!-- ログインフォーム -->
@@ -32,20 +30,18 @@
     <input type="password" id="login-password" placeholder="パスワード" required />
     <button type="submit">ログイン</button>
   </form>
-
-  <!-- エラーメッセージ表示エリア -->
   <p id="error-message" style="color: red;"></p>
 
   <!-- ホーム画面 -->
   <div id="home-screen" style="display: none;">
-    <h2>ホーム</h2>
+    <h2>ホーム画面</h2>
 
     <!-- プロフィール編集欄 -->
     <h3>プロフィール編集</h3>
     <form id="edit-profile-form">
       <input type="text" id="edit-name" placeholder="名前" />
       <input type="email" id="edit-email" placeholder="メールアドレス" />
-      <input type="text" id="edit-studentId" placeholder="学籍番号" />
+      <input type="text" id="edit-studentId" placeholder="学生ID" />
       <button type="submit">変更を保存</button>
     </form>
     <p id="edit-profile-message" style="color: green;"></p>
@@ -56,19 +52,35 @@
       <input type="text" id="ride-departure" placeholder="出発地" required />
       <input type="text" id="ride-destination" placeholder="目的地" required />
       <input type="datetime-local" id="ride-dateTime" required />
-      <input type="number" id="ride-seats" placeholder="空席数" required min="1" />
+      <input type="number" id="ride-seats" placeholder="空き座席数" required min="1" />
       <button type="submit">募集を作成</button>
     </form>
     <p id="create-ride-message" style="color: green;"></p>
 
     <!-- 募集閲覧欄 -->
     <h3>利用可能なライド</h3>
-    <div id="ride-list">
-      <!-- 募集が一覧表示されるエリア -->
-    </div>
+    <div id="ride-list"></div>
+
+    <!-- ログアウトボタン -->
+    <button id="logout-button">ログアウト</button>
   </div>
 
   <script>
+    // ページ読み込み時にトークンがあれば自動ログイン
+    document.addEventListener("DOMContentLoaded", () => {
+      const token = localStorage.getItem("token");
+      if (token) {
+        displayHomeScreen(); // ホーム画面を表示する関数を呼び出す
+      }
+    });
+
+    // ホーム画面を表示する関数
+    function displayHomeScreen() {
+      document.getElementById("login-form").style.display = "none";
+      document.getElementById("register-form").style.display = "none";
+      document.getElementById("home-screen").style.display = "block";
+    }
+
     // 登録処理
     document.getElementById("register-form").addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -86,7 +98,7 @@
 
       const registerMessage = document.getElementById("register-message");
       if (response.ok) {
-        registerMessage.textContent = "登録が完了しました！確認のためメールをご確認ください。";
+        registerMessage.textContent = "登録に成功しました！メールを確認してください。";
       } else {
         const result = await response.json();
         registerMessage.textContent = result.message || "登録に失敗しました。";
@@ -111,11 +123,10 @@
       const result = await response.json();
 
       if (result.token) {
-        alert("ログインに成功しました！");
-        localStorage.setItem("token", result.token); // トークンをローカルに保存
-        document.getElementById("home-screen").style.display = "block"; // ホーム画面を表示
+        localStorage.setItem("token", result.token);
+        displayHomeScreen();
       } else {
-        errorMessage.textContent = result.message || "ログインに失敗しました。";
+        errorMessage.textContent = result.message || "ログインに失敗しました。認証情報を確認してください。";
       }
     });
 
@@ -138,7 +149,7 @@
 
       const editProfileMessage = document.getElementById("edit-profile-message");
       if (response.ok) {
-        editProfileMessage.textContent = "プロフィールが正常に更新されました！";
+        editProfileMessage.textContent = "プロフィールが更新されました！";
       } else {
         editProfileMessage.textContent = "プロフィールの更新に失敗しました。";
       }
@@ -164,28 +175,17 @@
 
       const createRideMessage = document.getElementById("create-ride-message");
       if (response.ok) {
-        createRideMessage.textContent = "ライド募集が作成されました！";
+        createRideMessage.textContent = "ライドの募集が作成されました！";
       } else {
         createRideMessage.textContent = "ライド募集の作成に失敗しました。";
       }
     });
 
-    // 募集閲覧処理
-    async function loadAvailableRides() {
-      const response = await fetch("/search-rides");
-      const rides = await response.json();
-      const rideList = document.getElementById("ride-list");
-      rideList.innerHTML = "";
-
-      rides.forEach((ride) => {
-        const rideItem = document.createElement("div");
-        rideItem.textContent = `出発地: ${ride.departure}, 目的地: ${ride.destination}, 日時: ${ride.dateTime}, 空席数: ${ride.seatsAvailable}`;
-        rideList.appendChild(rideItem);
-      });
-    }
-
-    // ページ読み込み時に募集をロード
-    window.onload = loadAvailableRides;
+    // ログアウト処理
+    document.getElementById("logout-button").addEventListener("click", () => {
+      localStorage.removeItem("token");
+      location.reload(); // ログアウト後にページをリロードして再ログインを要求
+    });
   </script>
 </body>
 </html>
