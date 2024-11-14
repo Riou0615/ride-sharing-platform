@@ -128,18 +128,19 @@
       const name = document.getElementById("register-name").value;
       const email = document.getElementById("register-email").value;
       const password = document.getElementById("register-password").value;
-      const studentId = document.getElementById("register-studentId").value;
+      const student_id = document.getElementById("register-studentId").value;
       const userType = document.getElementById("register-userType").value;
 
       const response = await fetch("/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password, student_id: studentId, userType }),
+        body: JSON.stringify({ name, email, password, student_id, userType }),
       });
 
       const registerMessage = document.getElementById("register-message");
       if (response.ok) {
         registerMessage.textContent = "登録が成功しました！メールを確認してください。";
+        registerMessage.style.color = "green";
       } else {
         const result = await response.json();
         registerMessage.textContent = result.message || "登録に失敗しました。";
@@ -209,15 +210,19 @@
         body: JSON.stringify({ rideId })
       });
 
-      const result = await response.json();
-      alert(result.message);
+      if (response.ok) {
+        const result = await response.json();
+        alert(result.message);
+      } else {
+        alert("参加リクエストを送信できませんでした。もう一度お試しください。");
+      }
     }
 
     // メッセージ送信処理
     async function sendMessage(chatRoomId) {
       const message = document.getElementById("chat-message").value;
       const token = localStorage.getItem("token");
-      await fetch("/send-message", {
+      const response = await fetch("/send-message", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -225,8 +230,13 @@
         },
         body: JSON.stringify({ chatRoomId, message })
       });
-      document.getElementById("chat-message").value = "";
-      loadChatMessages(chatRoomId); // 最新メッセージをロード
+
+      if (response.ok) {
+        document.getElementById("chat-message").value = "";
+        loadChatMessages(chatRoomId); // 最新メッセージをロード
+      } else {
+        alert("メッセージを送信できませんでした。再試行してください。");
+      }
     }
 
     // チャットメッセージの取得処理
@@ -238,24 +248,24 @@
         }
       });
 
-      const messages = await response.json();
-      const chatBox = document.getElementById("chat-box");
-      chatBox.innerHTML = "";
-      messages.forEach(msg => {
-        const msgDiv = document.createElement("div");
-        msgDiv.textContent = `${msg.sender}: ${msg.message}`;
-        chatBox.appendChild(msgDiv);
-      });
+      if (response.ok) {
+        const messages = await response.json();
+        const chatBox = document.getElementById("chat-box");
+        chatBox.innerHTML = "";
+        messages.forEach(msg => {
+          const msgDiv = document.createElement("div");
+          msgDiv.textContent = `${msg.sender}: ${msg.message}`;
+          chatBox.appendChild(msgDiv);
+        });
+      } else {
+        alert("メッセージのロードに失敗しました。");
+      }
     }
 
     // ログアウト処理
     document.getElementById("logout-button").addEventListener("click", () => {
       localStorage.removeItem("token");
-      document.getElementById("home-screen").style.display = "none";
-      document.getElementById("register-form").style.display = "block";
-      document.getElementById("login-form").style.display = "block";
-      document.getElementById("register-heading").style.display = "block";
-      document.getElementById("login-heading").style.display = "block";
+      window.location.reload(); // ページをリロードして認証状態をリセット
     });
   </script>
 </body>

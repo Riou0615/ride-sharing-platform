@@ -1,19 +1,30 @@
 require('dotenv').config();
-
 const express = require('express');
 const nodemailer = require('nodemailer');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const path = require('path');
-const app = express();
+const mongoose = require('mongoose');
 
+const app = express();
 app.use(express.json());
+
+// MongoDB接続URI（<username>と<password>、<dbname>をあなたのものに置き換えてください）
+const mongoURI = 'mongodb+srv://riou0615:ourtE0iv2VRdouq6@cluster0.zh5nz.mongodb.net/rideSharingDB?retryWrites=true&w=majority';
+
+// MongoDBに接続
+mongoose.connect(mongoURI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+})
+.then(() => console.log("MongoDBに接続しました"))
+.catch((error) => console.error("MongoDB接続エラー:", error));
 
 // メモリ内にユーザー情報を保存する（簡易データベースとして）
 const users = {};
 const rideRequests = {};
-const chatRooms = {}; // チャットルームごとのメッセージを保存
+const chatRooms = {};
 
 // Nodemailerの設定
 const transporter = nodemailer.createTransport({
