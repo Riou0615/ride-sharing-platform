@@ -56,7 +56,7 @@ app.post('/register', async (req, res) => {
     transporter.sendMail(mailOptions, (error, info) => {
         if (error) {
             console.error('Error sending email:', error);
-            return res.status(500).json({ message: `Error sending email: ${error.message}` });
+            return res.status(500).json({ message: 'メール送信中にエラーが発生しました' });
         }
         res.status(200).json({ message: '登録に成功しました！メールを確認してください。' });
     });
@@ -66,7 +66,6 @@ app.post('/register', async (req, res) => {
 app.get('/confirm/:token', (req, res) => {
     const { token } = req.params;
 
-    // トークンを使ってユーザーを検索し、検証フラグをtrueにする
     for (let email in users) {
         if (users[email].token === token) {
             users[email].verified = true;
@@ -89,7 +88,7 @@ app.post('/login', (req, res) => {
         if (err) return res.status(500).json({ message: 'サーバーエラー' });
         if (!isMatch) return res.status(400).json({ message: 'パスワードが正しくありません' });
 
-        const token = jwt.sign({ email: user.email }, process.env.JWT_SECRET, { expiresIn: '1h' });
+        const token = jwt.sign({ email: user.email, userType: user.userType }, process.env.JWT_SECRET, { expiresIn: '1h' });
         res.json({ message: 'ログインに成功しました', token });
     });
 });
@@ -117,13 +116,11 @@ app.get('/home', authenticateToken, (req, res) => {
 app.post('/edit-profile', authenticateToken, (req, res) => {
     const { name, email, studentId } = req.body;
 
-    // ユーザーが存在するか確認
     const user = users[req.user.email];
     if (!user) {
         return res.status(400).json({ message: 'ユーザーが見つかりません' });
     }
 
-    // ユーザー情報の更新
     if (name) user.name = name;
     if (email) user.email = email;
     if (studentId) user.student_id = studentId;
@@ -140,8 +137,7 @@ app.post('/create-ride-request', authenticateToken, (req, res) => {
         return res.status(400).json({ message: '運転者のみライドの募集を作成できます' });
     }
 
-    // ライドリクエスト情報を保存
-    const requestId = crypto.randomBytes(16).toString('hex'); // リクエストIDを生成
+    const requestId = crypto.randomBytes(16).toString('hex');
     rideRequests[requestId] = {
         userId: user.email,
         departure,
@@ -157,6 +153,90 @@ app.post('/create-ride-request', authenticateToken, (req, res) => {
 app.get('/search-rides', (req, res) => {
     const rides = Object.values(rideRequests);
     res.json(rides);
+});
+
+// パスワードリセットリクエストエンドポイント
+app.post('/request-password-reset', (req, res) => {
+    const { email } = req.body;
+    const user = users[email];
+    if (!user) return res.status(400).json({ message: 'ユーザーが見つかりません' });
+
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    user.resetToken = resetToken;
+
+    const mailOptions = {
+        from: 'riou0615@gmail.com',
+        to: email,
+        subject: 'Password Reset Request',
+        text: `Please reset your password using the following link: https://ride-sharing-platform.onrender.com/reset-password/${resetToken}`
+    };
+
+    transporter.sendMail(mailOptions, (error, info) => {
+        if (error) {
+            console.error('Error sending password reset email:', error);
+            return res.status(500).json({ message: 'エラーが発生しました' });
+        }
+        res.status(200).json({ message: 'パスワードリセットリンクを送信しました。' });
+    });
+});
+
+// パスワードリセットエンドポイント
+app.post('/reset-password/:token', async (req, res) => {
+    const { token } = req.params;
+    const { newPassword } = req.body;
+
+    let user = null;
+    for (let email in users) {
+        if (users[email].resetToken === token) {
+            user = users[email];
+            break;
+        }
+    }
+
+    if (!user) return res.status(400).json({ message: '無効なトークンです' });
+
+    user.hashedPassword = await bcrypt.hash(newPassword, 10);
+    delete user.resetToken;
+    res.status(200).json({ message: 'パスワードがリセットされました。' });
+});
+
+// チャットルーム作成エンドポイント
+app.post('/create-chat-room', authenticateToken, (req, res) => {
+    const { rideId, userId } = req.body;
+
+    if (!rideRequests[rideId]) {
+        return res.status(404).json({ message: 'ライドリクエストが見つかりません' });
+    }
+
+    const chatRoomId = crypto.randomBytes(16).toString('hex');
+    chatRooms[chatRoomId] = { rideId, users: [req.user.email, userId], messages: [] };
+
+    res.status(200).json({ message: 'チャットルームが作成されました', chatRoomId });
+});
+
+// メッセージ送信エンドポイント
+app.post('/send-message', authenticateToken, (req, res) => {
+    const { chatRoomId, message } = req.body;
+
+    const chatRoom = chatRooms[chatRoomId];
+    if (!chatRoom) {
+        return res.status(404).json({ message: 'チャットルームが見つかりません' });
+    }
+
+    chatRoom.messages.push({ sender: req.user.email, message, timestamp: new Date() });
+    res.status(200).json({ message: 'メッセージが送信されました' });
+});
+
+// チャットルームのメッセージ取得エンドポイント
+app.get('/chat-messages/:chatRoomId', authenticateToken, (req, res) => {
+    const { chatRoomId } = req.params;
+
+    const chatRoom = chatRooms[chatRoomId];
+    if (!chatRoom) {
+        return res.status(404).json({ message: 'チャットルームが見つかりません' });
+    }
+
+    res.status(200).json(chatRoom.messages);
 });
 
 // ホームページにindex.htmlを提供
