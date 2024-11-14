@@ -28,13 +28,9 @@ const transporter = nodemailer.createTransport({
 app.post('/register', async (req, res) => {
     const { name, email, password, student_id, userType } = req.body;
 
-    // パスワードを暗号化
     const hashedPassword = await bcrypt.hash(password, 10);
-
-    // 認証トークンを生成
     const token = crypto.randomBytes(32).toString('hex');
 
-    // ユーザー情報を保存
     users[email] = {
         name,
         email,
@@ -45,7 +41,6 @@ app.post('/register', async (req, res) => {
         verified: false
     };
 
-    // 認証メールを送信
     const mailOptions = {
         from: 'riou0615@gmail.com',
         to: email,
@@ -53,7 +48,7 @@ app.post('/register', async (req, res) => {
         text: `Hello ${name}, please confirm your email by clicking on the following link: https://ride-sharing-platform.onrender.com/confirm/${token}`
     };
 
-    transporter.sendMail(mailOptions, (error, info) => {
+    transporter.sendMail(mailOptions, (error) => {
         if (error) {
             console.error('Error sending email:', error);
             return res.status(500).json({ message: 'メール送信中にエラーが発生しました' });
@@ -143,7 +138,9 @@ app.post('/create-ride-request', authenticateToken, (req, res) => {
         departure,
         destination,
         dateTime,
-        seatsAvailable
+        seatsAvailable,
+        passengers: [],
+        approvedPassengers: []
     };
 
     res.status(200).json({ message: 'ライドの募集が作成されました！', requestId });
@@ -155,85 +152,86 @@ app.get('/search-rides', (req, res) => {
     res.json(rides);
 });
 
-// パスワードリセットリクエストエンドポイント
-app.post('/request-password-reset', (req, res) => {
-    const { email } = req.body;
-    const user = users[email];
-    if (!user) return res.status(400).json({ message: 'ユーザーが見つかりません' });
+// 同乗者がライドを選択し、登録するエンドポイント
+app.post('/join-ride', authenticateToken, (req, res) => {
+    const { rideId } = req.body;
+    const user = users[req.user.email];
 
-    const resetToken = crypto.randomBytes(32).toString('hex');
-    user.resetToken = resetToken;
+    if (user.userType !== 'passenger') {
+        return res.status(400).json({ message: '同乗者のみライドに参加できます' });
+    }
+
+    const ride = rideRequests[rideId];
+    if (!ride) {
+        return res.status(404).json({ message: 'ライドが見つかりません' });
+    }
+
+    ride.passengers.push(user.email);
 
     const mailOptions = {
         from: 'riou0615@gmail.com',
-        to: email,
-        subject: 'Password Reset Request',
-        text: `Please reset your password using the following link: https://ride-sharing-platform.onrender.com/reset-password/${resetToken}`
+        to: ride.userId,
+        subject: '新しい同乗者が参加を希望しています',
+        text: `${user.name}さんがあなたのライドに参加を希望しています。承認するには、プラットフォームにログインしてください。`
     };
 
-    transporter.sendMail(mailOptions, (error, info) => {
+    transporter.sendMail(mailOptions, (error) => {
         if (error) {
-            console.error('Error sending password reset email:', error);
-            return res.status(500).json({ message: 'エラーが発生しました' });
+            console.error('Error sending email:', error);
+            return res.status(500).json({ message: `通知メールの送信に失敗しました: ${error.message}` });
         }
-        res.status(200).json({ message: 'パスワードリセットリンクを送信しました。' });
+        res.status(200).json({ message: 'ライドに参加申請を行いました。運転者の承認をお待ちください。' });
     });
 });
 
-// パスワードリセットエンドポイント
-app.post('/reset-password/:token', async (req, res) => {
-    const { token } = req.params;
-    const { newPassword } = req.body;
+// 運転者が同乗者を承認するエンドポイント
+app.post('/approve-passenger', authenticateToken, (req, res) => {
+    const { rideId, passengerEmail } = req.body;
+    const user = users[req.user.email];
 
-    let user = null;
-    for (let email in users) {
-        if (users[email].resetToken === token) {
-            user = users[email];
-            break;
-        }
+    const ride = rideRequests[rideId];
+    if (!ride || ride.userId !== user.email) {
+        return res.status(404).json({ message: 'ライドが見つからないか、承認権限がありません' });
     }
 
-    if (!user) return res.status(400).json({ message: '無効なトークンです' });
-
-    user.hashedPassword = await bcrypt.hash(newPassword, 10);
-    delete user.resetToken;
-    res.status(200).json({ message: 'パスワードがリセットされました。' });
-});
-
-// チャットルーム作成エンドポイント
-app.post('/create-chat-room', authenticateToken, (req, res) => {
-    const { rideId, userId } = req.body;
-
-    if (!rideRequests[rideId]) {
-        return res.status(404).json({ message: 'ライドリクエストが見つかりません' });
-    }
+    ride.approvedPassengers.push(passengerEmail);
 
     const chatRoomId = crypto.randomBytes(16).toString('hex');
-    chatRooms[chatRoomId] = { rideId, users: [req.user.email, userId], messages: [] };
+    chatRooms[chatRoomId] = {
+        rideId: rideId,
+        users: [user.email, passengerEmail],
+        messages: []
+    };
 
-    res.status(200).json({ message: 'チャットルームが作成されました', chatRoomId });
+    res.status(200).json({ message: '同乗者を承認しました。チャットルームが作成されました。', chatRoomId });
 });
 
-// メッセージ送信エンドポイント
+// チャットメッセージの送信エンドポイント
 app.post('/send-message', authenticateToken, (req, res) => {
     const { chatRoomId, message } = req.body;
-
     const chatRoom = chatRooms[chatRoomId];
-    if (!chatRoom) {
-        return res.status(404).json({ message: 'チャットルームが見つかりません' });
+
+    if (!chatRoom || !chatRoom.users.includes(req.user.email)) {
+        return res.status(403).json({ message: 'このチャットルームにアクセスできません' });
     }
 
-    chatRoom.messages.push({ sender: req.user.email, message, timestamp: new Date() });
-    res.status(200).json({ message: 'メッセージが送信されました' });
+    const newMessage = {
+        sender: req.user.email,
+        message,
+        timestamp: new Date().toISOString()
+    };
+    chatRoom.messages.push(newMessage);
+
+    res.status(200).json({ message: 'メッセージが送信されました', newMessage });
 });
 
-// チャットルームのメッセージ取得エンドポイント
+// チャットメッセージの取得エンドポイント
 app.get('/chat-messages/:chatRoomId', authenticateToken, (req, res) => {
     const { chatRoomId } = req.params;
-
     const chatRoom = chatRooms[chatRoomId];
-    if (!chatRoom) {
-        return res.status(404).json({ message: 'チャットルームが見つかりません' });
+
+    if (!chatRoom || !chatRoom.users.includes(req.user.email)) {
+        return res.status(403).json({ message: 'このチャットルームにアクセスできません' });
     }
 
     res.status(200).json(chatRoom.messages);
