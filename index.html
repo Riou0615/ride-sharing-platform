@@ -39,7 +39,7 @@
   <h1>ライドシェアプラットフォームへようこそ！</h1>
 
   <!-- ユーザー登録フォーム -->
-  <h2>登録</h2>
+  <h2 id="register-heading">登録</h2>
   <form id="register-form">
     <input type="text" id="register-name" placeholder="名前" required />
     <input type="email" id="register-email" placeholder="メールアドレス" required />
@@ -55,7 +55,7 @@
   <p id="register-message" class="message"></p>
 
   <!-- ログインフォーム -->
-  <h2>ログイン</h2>
+  <h2 id="login-heading">ログイン</h2>
   <form id="login-form">
     <input type="email" id="login-email" placeholder="メールアドレス" required />
     <input type="password" id="login-password" placeholder="パスワード" required />
@@ -92,6 +92,12 @@
     <h3>利用可能なライド</h3>
     <div id="ride-list"></div>
 
+    <!-- チャット画面（承認後） -->
+    <h3>チャットルーム</h3>
+    <div id="chat-box"></div>
+    <input type="text" id="chat-message" placeholder="メッセージを入力" />
+    <button onclick="sendMessage()">送信</button>
+
     <!-- ログアウトボタン -->
     <button id="logout-button">ログアウト</button>
   </div>
@@ -104,18 +110,21 @@
         document.getElementById("home-screen").style.display = "block";
         document.getElementById("register-form").style.display = "none";
         document.getElementById("login-form").style.display = "none";
+        document.getElementById("register-heading").style.display = "none";
+        document.getElementById("login-heading").style.display = "none";
         await loadAvailableRides();
       } else {
         document.getElementById("home-screen").style.display = "none";
         document.getElementById("register-form").style.display = "block";
         document.getElementById("login-form").style.display = "block";
+        document.getElementById("register-heading").style.display = "block";
+        document.getElementById("login-heading").style.display = "block";
       }
     };
 
     // 登録処理
     document.getElementById("register-form").addEventListener("submit", async (e) => {
       e.preventDefault();
-      document.getElementById("register-message").textContent = ""; // 初期化
       const name = document.getElementById("register-name").value;
       const email = document.getElementById("register-email").value;
       const password = document.getElementById("register-password").value;
@@ -160,64 +169,15 @@
         document.getElementById("home-screen").style.display = "block";
         document.getElementById("register-form").style.display = "none";
         document.getElementById("login-form").style.display = "none";
+        document.getElementById("register-heading").style.display = "none";
+        document.getElementById("login-heading").style.display = "none";
         await loadAvailableRides();
       } else {
         errorMessage.textContent = result.message || "ログインに失敗しました。資格情報を確認してください。";
       }
     });
 
-    // プロフィール編集処理
-    document.getElementById("edit-profile-form").addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const name = document.getElementById("edit-name").value;
-      const email = document.getElementById("edit-email").value;
-      const studentId = document.getElementById("edit-studentId").value;
-
-      const token = localStorage.getItem("token");
-      const response = await fetch("/edit-profile", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
-        },
-        body: JSON.stringify({ name, email, studentId }),
-      });
-
-      const editProfileMessage = document.getElementById("edit-profile-message");
-      if (response.ok) {
-        editProfileMessage.textContent = "プロフィールが正常に更新されました！";
-      } else {
-        editProfileMessage.textContent = "プロフィールの更新に失敗しました。";
-      }
-    });
-
-    // ライド募集作成処理
-    document.getElementById("create-ride-form").addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const departure = document.getElementById("ride-departure").value;
-      const destination = document.getElementById("ride-destination").value;
-      const dateTime = document.getElementById("ride-dateTime").value;
-      const seatsAvailable = document.getElementById("ride-seats").value;
-
-      const token = localStorage.getItem("token");
-      const response = await fetch("/create-ride-request", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
-        },
-        body: JSON.stringify({ departure, destination, dateTime, seatsAvailable }),
-      });
-
-      const createRideMessage = document.getElementById("create-ride-message");
-      if (response.ok) {
-        createRideMessage.textContent = "ライド募集が作成されました！";
-      } else {
-        createRideMessage.textContent = "ライド募集の作成に失敗しました。";
-      }
-    });
-
-    // 募集閲覧処理
+    // ライドリストをロードして表示する関数
     async function loadAvailableRides() {
       const response = await fetch("/search-rides");
       const rides = await response.json();
@@ -227,7 +187,64 @@
       rides.forEach((ride) => {
         const rideItem = document.createElement("div");
         rideItem.textContent = `出発地: ${ride.departure} - 目的地: ${ride.destination} - 日時: ${ride.dateTime} - 空き座席数: ${ride.seatsAvailable}`;
+        
+        const joinButton = document.createElement("button");
+        joinButton.textContent = "参加";
+        joinButton.addEventListener("click", () => joinRide(ride.id));  // ライドIDを渡して参加申請
+
+        rideItem.appendChild(joinButton);
         rideList.appendChild(rideItem);
+      });
+    }
+
+    // ライドに参加申請を送信する関数
+    async function joinRide(rideId) {
+      const token = localStorage.getItem("token");
+      const response = await fetch("/join-ride", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({ rideId })
+      });
+
+      const result = await response.json();
+      alert(result.message);
+    }
+
+    // メッセージ送信処理
+    async function sendMessage(chatRoomId) {
+      const message = document.getElementById("chat-message").value;
+      const token = localStorage.getItem("token");
+      await fetch("/send-message", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({ chatRoomId, message })
+      });
+      document.getElementById("chat-message").value = "";
+      loadChatMessages(chatRoomId); // 最新メッセージをロード
+    }
+
+    // チャットメッセージの取得処理
+    async function loadChatMessages(chatRoomId) {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`/chat-messages/${chatRoomId}`, {
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
+
+      const messages = await response.json();
+      const chatBox = document.getElementById("chat-box");
+      chatBox.innerHTML = "";
+      messages.forEach(msg => {
+        const msgDiv = document.createElement("div");
+        msgDiv.textContent = `${msg.sender}: ${msg.message}`;
+        chatBox.appendChild(msgDiv);
       });
     }
 
@@ -237,8 +254,9 @@
       document.getElementById("home-screen").style.display = "none";
       document.getElementById("register-form").style.display = "block";
       document.getElementById("login-form").style.display = "block";
+      document.getElementById("register-heading").style.display = "block";
+      document.getElementById("login-heading").style.display = "block";
     });
   </script>
 </body>
 </html>
-
