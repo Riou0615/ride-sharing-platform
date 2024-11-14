@@ -46,8 +46,8 @@
     </form>
     <p id="edit-profile-message" style="color: green;"></p>
 
-    <!-- 募集作成欄（運転者限定） -->
-    <h3>ライド募集作成（運転者のみ）</h3>
+    <!-- ライド募集作成欄（運転者のみ） -->
+    <h3>ライド募集作成 (運転者のみ)</h3>
     <form id="create-ride-form">
       <input type="text" id="ride-departure" placeholder="出発地" required />
       <input type="text" id="ride-destination" placeholder="目的地" required />
@@ -66,20 +66,21 @@
   </div>
 
   <script>
-    // ページ読み込み時にトークンがあれば自動ログイン
-    document.addEventListener("DOMContentLoaded", () => {
+    // ページ読み込み時の処理
+    window.onload = function () {
       const token = localStorage.getItem("token");
       if (token) {
-        displayHomeScreen(); // ホーム画面を表示する関数を呼び出す
+        // トークンが存在する場合、ホーム画面を表示
+        document.getElementById("home-screen").style.display = "block";
+        document.getElementById("register-form").style.display = "none";
+        document.getElementById("login-form").style.display = "none";
+      } else {
+        // トークンがない場合、登録・ログインフォームを表示
+        document.getElementById("home-screen").style.display = "none";
+        document.getElementById("register-form").style.display = "block";
+        document.getElementById("login-form").style.display = "block";
       }
-    });
-
-    // ホーム画面を表示する関数
-    function displayHomeScreen() {
-      document.getElementById("login-form").style.display = "none";
-      document.getElementById("register-form").style.display = "none";
-      document.getElementById("home-screen").style.display = "block";
-    }
+    };
 
     // 登録処理
     document.getElementById("register-form").addEventListener("submit", async (e) => {
@@ -98,7 +99,7 @@
 
       const registerMessage = document.getElementById("register-message");
       if (response.ok) {
-        registerMessage.textContent = "登録に成功しました！メールを確認してください。";
+        registerMessage.textContent = "登録が成功しました！メールを確認して、アカウントを確認してください。";
       } else {
         const result = await response.json();
         registerMessage.textContent = result.message || "登録に失敗しました。";
@@ -123,10 +124,13 @@
       const result = await response.json();
 
       if (result.token) {
+        alert("ログインが成功しました！");
         localStorage.setItem("token", result.token);
-        displayHomeScreen();
+        document.getElementById("home-screen").style.display = "block";
+        document.getElementById("register-form").style.display = "none";
+        document.getElementById("login-form").style.display = "none";
       } else {
-        errorMessage.textContent = result.message || "ログインに失敗しました。認証情報を確認してください。";
+        errorMessage.textContent = result.message || "ログインに失敗しました。資格情報を確認してください。";
       }
     });
 
@@ -149,7 +153,7 @@
 
       const editProfileMessage = document.getElementById("edit-profile-message");
       if (response.ok) {
-        editProfileMessage.textContent = "プロフィールが更新されました！";
+        editProfileMessage.textContent = "プロフィールが正常に更新されました！";
       } else {
         editProfileMessage.textContent = "プロフィールの更新に失敗しました。";
       }
@@ -175,16 +179,41 @@
 
       const createRideMessage = document.getElementById("create-ride-message");
       if (response.ok) {
-        createRideMessage.textContent = "ライドの募集が作成されました！";
+        createRideMessage.textContent = "ライド募集が作成されました！";
       } else {
         createRideMessage.textContent = "ライド募集の作成に失敗しました。";
       }
     });
 
+    // 募集閲覧処理
+    async function loadAvailableRides() {
+      const response = await fetch("/search-rides");
+      const rides = await response.json();
+      const rideList = document.getElementById("ride-list");
+      rideList.innerHTML = "";
+
+      rides.forEach((ride) => {
+        const rideItem = document.createElement("div");
+        rideItem.textContent = `出発地: ${ride.departure} - 目的地: ${ride.destination} - 日時: ${ride.dateTime} - 空き座席数: ${ride.seatsAvailable}`;
+        rideList.appendChild(rideItem);
+      });
+    }
+
+    // ページ読み込み時に募集をロード
+    window.onload = () => {
+      const token = localStorage.getItem("token");
+      if (token) {
+        document.getElementById("home-screen").style.display = "block";
+        document.getElementById("register-form").style.display = "none";
+        document.getElementById("login-form").style.display = "none";
+        loadAvailableRides();
+      }
+    };
+
     // ログアウト処理
     document.getElementById("logout-button").addEventListener("click", () => {
       localStorage.removeItem("token");
-      location.reload(); // ログアウト後にページをリロードして再ログインを要求
+      window.location.reload();
     });
   </script>
 </body>
