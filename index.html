@@ -11,6 +11,9 @@
       margin: 0 auto;
       padding: 20px;
     }
+    h1, h2, h3 {
+      color: #333;
+    }
     form {
       margin-bottom: 20px;
     }
@@ -19,6 +22,7 @@
       margin: 5px 0;
       padding: 10px;
       width: 100%;
+      box-sizing: border-box;
     }
     .message {
       color: green;
@@ -162,7 +166,79 @@
       }
     });
 
-    // その他の処理は変更なし
+    // プロフィール編集処理
+    document.getElementById("edit-profile-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const name = document.getElementById("edit-name").value;
+      const email = document.getElementById("edit-email").value;
+      const studentId = document.getElementById("edit-studentId").value;
+
+      const token = localStorage.getItem("token");
+      const response = await fetch("/edit-profile", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify({ name, email, studentId }),
+      });
+
+      const editProfileMessage = document.getElementById("edit-profile-message");
+      if (response.ok) {
+        editProfileMessage.textContent = "プロフィールが正常に更新されました！";
+      } else {
+        editProfileMessage.textContent = "プロフィールの更新に失敗しました。";
+      }
+    });
+
+    // ライド募集作成処理
+    document.getElementById("create-ride-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const departure = document.getElementById("ride-departure").value;
+      const destination = document.getElementById("ride-destination").value;
+      const dateTime = document.getElementById("ride-dateTime").value;
+      const seatsAvailable = document.getElementById("ride-seats").value;
+
+      const token = localStorage.getItem("token");
+      const response = await fetch("/create-ride-request", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify({ departure, destination, dateTime, seatsAvailable }),
+      });
+
+      const createRideMessage = document.getElementById("create-ride-message");
+      if (response.ok) {
+        createRideMessage.textContent = "ライド募集が作成されました！";
+      } else {
+        createRideMessage.textContent = "ライド募集の作成に失敗しました。";
+      }
+    });
+
+    // 募集閲覧処理
+    async function loadAvailableRides() {
+      const response = await fetch("/search-rides");
+      const rides = await response.json();
+      const rideList = document.getElementById("ride-list");
+      rideList.innerHTML = "";
+
+      rides.forEach((ride) => {
+        const rideItem = document.createElement("div");
+        rideItem.textContent = `出発地: ${ride.departure} - 目的地: ${ride.destination} - 日時: ${ride.dateTime} - 空き座席数: ${ride.seatsAvailable}`;
+        rideList.appendChild(rideItem);
+      });
+    }
+
+    // ログアウト処理
+    document.getElementById("logout-button").addEventListener("click", () => {
+      localStorage.removeItem("token");
+      document.getElementById("home-screen").style.display = "none";
+      document.getElementById("register-form").style.display = "block";
+      document.getElementById("login-form").style.display = "block";
+    });
   </script>
 </body>
 </html>
+
